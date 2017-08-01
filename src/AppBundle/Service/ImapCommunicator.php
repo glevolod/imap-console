@@ -12,12 +12,19 @@ class ImapCommunicator
     private $username;
     private $password;
 
+    private $error;
+
 
     public function open($username, $password)
     {
         $this->username = $username;
         $this->password = $password;
-        $this->imap = imap_open(self::MAIL_BOX_PATH, $username, $password);
+        try {
+            $this->imap = imap_open(self::MAIL_BOX_PATH, $username, $password);
+        } catch (\Throwable $exception) {
+            $this->error = $exception;
+            return false;
+        }
         return true;
     }
 
@@ -27,8 +34,9 @@ class ImapCommunicator
         $folderNumber = 1;
 
         foreach ($folders as $folder) {
-            $folder = str_replace(self::MAIL_BOX_PATH, "", mb_convert_encoding($folder, "UTF-8", "UTF7-IMAP"));
-            $foldersArr[$folderNumber] = $folder;
+            $folderOriginalName = str_replace(self::MAIL_BOX_PATH, "", $folder);
+            $folderPrettyName = str_replace(self::MAIL_BOX_PATH, "", mb_convert_encoding($folder, "UTF-8", "UTF7-IMAP"));
+            $foldersArr[$folderNumber] = ['originalName' => $folderOriginalName, 'prettyName' => $folderPrettyName];
             $folderNumber++;
         }
         return $foldersArr;
@@ -40,7 +48,7 @@ class ImapCommunicator
         $numMessages = imap_num_msg($imap);
         $num = 1;
         $messageDetails = [];
-        for ($i = $numMessages; $i > ($numMessages - self::NUM_MESSAGES); $i--) {
+        for ($i = $numMessages; $i > ($numMessages - self::NUM_MESSAGES) && $i != 0; $i--) {
             $header = imap_headerinfo($imap, $i, 50, 50);
             $messageDetails[$num++] = [
                 'from' => imap_utf8($header->fromaddress),
@@ -54,7 +62,17 @@ class ImapCommunicator
 
     public function getMailBody($uid)
     {
-        $body = imap_fetchbody($this->imap, $uid, '1', FT_UID);
+        $body = imap_fetchbody($this->imap, imap_msgno($this->imap, $uid), '1');
+        if (empty($body)) {
+            $body = imap_fetchbody($this->imap, imap_msgno($this->imap, $uid), '2');
+        }
         return imap_qprint($body);
+    }
+
+    public function getLastErrorMessage()
+    {
+        if ($this->error instanceof \Throwable) {
+            return $this->error->getMessage();
+        }
     }
 }
