@@ -76,4 +76,5 @@ Steps
 =====
 1. clone this repo
 2. install php-imap extension
-3. execute composer install
+3. execute 'composer install'
+4. execute 'php bin/console app:imap-communicate'
