@@ -10,6 +10,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class AppImapCommunicateCommand extends ContainerAwareCommand
 {
+
+    const COMM_GET_FOLDERS = 'getFolders';
+    const COMM_GET_FOLDER_MAILS_BY_NUMBER = 'getFolderMailsByNumber';
+    const COMM_GET_MAIL_BY_NUMBER = 'getMailByNumber';
+    const COMM_HELP = 'help';
+    const COMM_QUIT = 'quit';
+
     protected function configure()
     {
         $this
@@ -20,10 +27,8 @@ class AppImapCommunicateCommand extends ContainerAwareCommand
     protected function execute(InputInterface $input, OutputInterface $output)
     {
 
-//        $username = readline('Username: ');
-//        $password = readline('Password: ');
-        $username = 'g86vladimir@gmail.com';
-        $password = 'V_G862356qs';
+        $username = readline('Username: ');
+        $password = readline('Password: ');
 
         /** @var ImapCommunicator $imapCommunicator */
         $imapCommunicator = $this->getContainer()->get('app.imap_communicator');
@@ -32,8 +37,6 @@ class AppImapCommunicateCommand extends ContainerAwareCommand
             $output->writeln($imapCommunicator->getLastErrorMessage());
             return;
         }
-return;
-
         $previousCommand = 'start';
 
         $folders = [];
@@ -45,34 +48,34 @@ return;
                 continue;
             }
             switch ($userInput) {
-                case 'get_folders':
-                    $previousCommand = 'get_folders';
+                case self::COMM_GET_FOLDERS:
+                    $previousCommand = self::COMM_GET_FOLDERS;
                     $invitationText = 'Enter command or folder number: ';
                     $folders = $imapCommunicator->getFoldersNames();
                     foreach ($folders as $key => $folder) {
                         $output->writeln($key . " " . $folder['prettyName']);
                     }
                     break;
-                case ($previousCommand == 'get_folders' && in_array($userInput, array_keys($folders))):
-                    $previousCommand = 'folder_by_number';
+                case ($previousCommand == self::COMM_GET_FOLDERS && in_array($userInput, array_keys($folders))):
+                    $previousCommand = self::COMM_GET_FOLDER_MAILS_BY_NUMBER;
                     $invitationText = 'Enter command or mail number: ';
                     $mails = $imapCommunicator->getFolderMailsList($folders[$userInput]['originalName']);
                     foreach ($mails as $key => $mail) {
                         $output->writeln($key . "\n" . $mail['from'] . "\n\t" . $mail['subject'] . "\n\t" . $mail['date']);
                     }
                     break;
-                case (($previousCommand == 'folder_by_number' || $previousCommand == 'mail_by_number') && in_array($userInput, array_keys($mails))):
-                    $previousCommand = 'mail_by_number';
+                case (($previousCommand == self::COMM_GET_FOLDER_MAILS_BY_NUMBER || $previousCommand == self::COMM_GET_MAIL_BY_NUMBER) && in_array($userInput, array_keys($mails))):
+                    $previousCommand = self::COMM_GET_MAIL_BY_NUMBER;
                     $invitationText = 'Enter command or mail number: ';
                     $mailBody = $imapCommunicator->getMailBody($mails[$userInput]['uid']);
                     $output->writeln($mailBody);
                     break;
-                case (mb_strtolower($userInput) == 'exit' || mb_strtolower($userInput) == 'quit'):
+                case (mb_strtolower($userInput) == self::COMM_QUIT):
                     $output->writeln('Bye!');
                     return;
                     break;
-                case (mb_strtolower($userInput) == 'help'):
-                    $output->writeln('Available commands: get_folders, quit, exit, help');
+                case (mb_strtolower($userInput) == self::COMM_HELP):
+                    $output->writeln('Available commands: ' . self::COMM_GET_FOLDERS . ', ' . self::COMM_QUIT . ', ' . self::COMM_HELP);
                     break;
                 default:
                     $output->writeln("Invalid command. Try to enter 'help'");
